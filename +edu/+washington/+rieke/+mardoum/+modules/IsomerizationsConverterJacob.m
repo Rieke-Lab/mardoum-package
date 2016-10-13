@@ -355,7 +355,7 @@ classdef IsomerizationsConverterJacob < symphonyui.ui.Module
         
         % converter updates
         function onVoltsBox(obj, hObj, ~)
-            import edu.washington.riekelab.weber.modules.IsomerizationsConverterUtilities.*
+            import edu.washington.riekelab.mardoum.modules.IsomerizationsConverterUtilities.*
             % update the isomerizations count with the new voltage for each
             % photoreceptor
             voltage = str2double(hObj.String);
@@ -388,7 +388,7 @@ classdef IsomerizationsConverterJacob < symphonyui.ui.Module
         end
         
         function onPhotoreceptorBox(obj, hObj, ~, photoreceptor_key)
-            import edu.washington.riekelab.weber.modules.IsomerizationsConverterUtilities.*
+            import edu.washington.riekelab.mardoum.modules.IsomerizationsConverterUtilities.*
             
             % get the device info (for currently selected LED)
             led = get(obj.ledPopupMenu, 'Value');

@@ -283,7 +283,7 @@ classdef Calibrator < symphonyui.ui.Module
         % returns a string of the base folder containing calibration data
         function folderPath = getCalibrationFolderPath(obj) %#ok<MANU>
             folderPath = ...
-                edu.washington.riekelab.weber.modules.CalibratorUtilities.CalibratorConstants.PATH;
+                edu.washington.riekelab.mardoum.modules.CalibratorUtilities.CalibratorConstants.PATH;
         end
         
         % returns rig name as a string - gets it from the last directory in
@@ -362,7 +362,7 @@ classdef Calibrator < symphonyui.ui.Module
                         setName '.txt'];
                     % find most recent entry in that file
                     [val, date] = ...
-                        edu.washington.riekelab.weber.modules.CalibratorUtilities.readMostRecentCalibration(filePath);
+                        edu.washington.riekelab.mardoum.modules.CalibratorUtilities.readMostRecentCalibration(filePath);
                     % add to map
                     obj.recentCalibrationValues.get(devName).put(setName, val);
                     obj.recentCalibrationDates.get(devName).put(setName, char(date));
@@ -1101,7 +1101,7 @@ classdef Calibrator < symphonyui.ui.Module
                 for sett = 1:numel(settings)
                     logPath = [basePath filesep settings{sett} '.txt'];
                     [calibrationsMap(settings{sett}), ~] = ...
-                        edu.washington.riekelab.weber.modules.CalibratorUtilities.readMostRecentCalibration(logPath);
+                        edu.washington.riekelab.mardoum.modules.CalibratorUtilities.readMostRecentCalibration(logPath);
                 end
                 % add the map to the device as a resource...
                 obj.devices{dev}.addResource( ...
@@ -1123,11 +1123,11 @@ classdef Calibrator < symphonyui.ui.Module
                     for sett = 1:numel(settings)
                         logPath = [basePath filesep settings{sett} '.txt'];
                         % saves date, value, and adds units
-                        edu.washington.riekelab.weber.modules.CalibratorUtilities.addCalibrationToLog( ...
+                        edu.washington.riekelab.mardoum.modules.CalibratorUtilities.addCalibrationToLog( ...
                             logPath, ...
                             obj.calibrationValues{dev}(settings{sett}), ...
                             time, ...
-                            edu.washington.riekelab.weber.modules.CalibratorUtilities.CalibratorConstants.UNITS);
+                            edu.washington.riekelab.mardoum.modules.CalibratorUtilities.CalibratorConstants.UNITS);
                     end
                 end
             end
