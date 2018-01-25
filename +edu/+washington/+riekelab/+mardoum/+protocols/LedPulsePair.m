@@ -1,14 +1,20 @@
 classdef LedPulsePair < edu.washington.riekelab.protocols.RiekeLabProtocol
-    % Presents a set of rectangular pulse stimuli to a specified LED and records from a specified amplifier.
+    % Presents a pair of LED pulses using either same or different LEDs.
     
     properties
-        led1                            % Output LED
-        led2
-        preTime = 10                    % Pulse leading duration (ms)
-        stimTime = 100                  % Pulse duration (ms)
-        tailTime = 400                  % Pulse trailing duration (ms)
-        lightAmplitude = 0.1            % Pulse amplitude (V or norm. [0-1] depending on LED units)
-        lightMean = 0                   % Pulse and LED background mean (V or norm. [0-1] depending on LED units)
+        led1                            % Output LED, pulse 1
+        led2                            % Output LED, pulse 2
+        
+        preTime = 100                   % Pulse leading duration (ms)
+        stimTime = 10                   % Pulse duration (ms)
+        betweenOnsetsTime = 100         % Time between onsets of pulses in pair (ms)
+        tailTime = 500                  % Pulse trailing duration (ms)
+        
+        led1Amplitude = 0.1             % Pulse 1 amplitude (V or norm. [0-1] depending on LED units)
+        led2Amplitude = 0.1             % Pulse 2 amplitude
+        led1Mean = 0                    % Pulse and LED 1 background mean (V or norm. [0-1] depending on LED units)
+        led2Mean = 0                    % Pulse and LED 2 background mean
+        
         amp                             % Input amplifier
     end
     
@@ -45,7 +51,7 @@ classdef LedPulsePair < edu.washington.riekelab.protocols.RiekeLabProtocol
             end
         end
         
-        % Preview would need some work to handle possibilities 
+        % Preview would need to handle multiple scenarios
 %         function p = getPreview(obj, panel)
 %             p = symphonyui.builtin.previews.StimuliPreview(panel, @()obj.createLedStimulus());
 %         end
@@ -69,42 +75,49 @@ classdef LedPulsePair < edu.washington.riekelab.protocols.RiekeLabProtocol
                     'measurementRegion2', [obj.preTime obj.preTime+obj.stimTime]);
             end
             
-            device = obj.rig.getDevice(obj.led);
-            % TODO: set appropriate backgrounds for 1 or 2 led stimulus
-            device.background = symphonyui.core.Measurement(obj.lightMean, device.background.displayUnits);
+            device1 = obj.rig.getDevice(obj.led1);
+            device1.background = symphonyui.core.Measurement(obj.led1Mean, device1.background.displayUnits);
+            if strcmp(obj.led1, obj.led2)
+                if obj.led1Mean ~= obj.led2Mean
+                    error('When using same LED for both pulses, means must be equal');
+                end
+            else
+                device2 = obj.rig.getDevice(obj.led2);
+                device2.background = symphonyui.core.Measurement(obj.led2Mean, device2.background.displayUnits);
+            end
         end
         
-        function stim = createLedStimulusOneFlash(obj, preTime, stimTime, tailTime, lightMean, lightAmplitude)
+        function stim = createLedStimulusSingle(obj, preTime, stimTime, tailTime, lightMean, lightAmplitude)
             gen = symphonyui.builtin.stimuli.PulseGenerator();
             
             gen.preTime = preTime;
             gen.stimTime = stimTime;
             gen.tailTime = tailTime;
-            gen.amplitude = lightAmplitude;
             gen.mean = lightMean;
+            gen.amplitude = lightAmplitude;
             gen.sampleRate = obj.sampleRate;
             gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
             
             stim = gen.generate();
         end
         
-        function stim = createLedStimulusTwoFlashes(obj)
-            firstFlashStim = obj.createLedStimulusOneFlash( ...
+        function stim = createLedStimulusPairSame(obj)
+            firstPulseStim = obj.createLedStimulusSingle( ...
                 obj.preTime, ...
-                obj.flashDuration, ...
-                obj.timeBetweenFlashes + obj.flashDuration + obj.tailTime, ...
-                obj.flash1Mean, ...
-                obj.flash1Amplitude);
+                obj.stimTime, ...
+                obj.betweenOnsetsTime + obj.tailTime, ...
+                obj.led1Mean, ...
+                obj.led1Amplitude);
             
-            secondFlashStim = obj.createLedStimulusOneFlash( ...
-                obj.preTime + obj.flashDuration + obj.timeBetweenFlashes, ...
-                obj.flashDuration, ...
+            secondPulseStim = obj.createLedStimulusSingle( ...
+                obj.preTime + obj.betweenOnsetsTime, ...
+                obj.stimTime, ...
                 obj.tailTime, ...
                 0, ...
-                obj.flash2Amplitude);
+                obj.led2Amplitude);
             
             sumGen = symphonyui.builtin.stimuli.SumGenerator();
-            sumGen.stimuli = {firstFlashStim.generate(), secondFlashStim.generate()};
+            sumGen.stimuli = {firstPulseStim.generate(), secondPulseStim.generate()};
             stim = sumGen.generate();
         end
         
@@ -112,26 +125,22 @@ classdef LedPulsePair < edu.washington.riekelab.protocols.RiekeLabProtocol
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
             if strcmp(obj.led1, obj.led2)
-                if obj.flash1Mean ~= obj.flash2Mean
-                   error('when using same led, means must be the same'); 
-                end
-                
-                epoch.addStimulus(obj.rig.getDevice(obj.led1), obj.createLedStimulusTwoFlashes());
+                % use SumGenerator
+                epoch.addStimulus(obj.rig.getDevice(obj.led1), obj.createLedStimulusPairSame());
             else
-                epoch.addStimulus(obj.rig.getDevice(obj.led1), ...
-                    obj.createLedStimulusOneFlash( ...
+                % run two simultaneous pulse protocols
+                epoch.addStimulus(obj.rig.getDevice(obj.led1), obj.createLedStimulusSingle( ...
                     obj.preTime, ...
-                    obj.flashDuration, ...
-                    obj.timeBetweenFlashes + obj.flashDuration + obj.tailTime, ...
-                    obj.flash1Mean, ...
-                    obj.flash1Amplitude));
-                epoch.addStimulus(obj.rig.getDevice(obj.led2), ...
-                    obj.createLedStimulusOneFlash( ...
-                    obj.preTime + obj.flashDuration + obj.timeBetweenFlashes, ...
-                    obj.flashDuration, ...
+                    obj.stimTime, ...
+                    obj.betweenOnsetsTime + obj.tailTime, ...
+                    obj.led1Mean, ...
+                    obj.led1Amplitude));
+                epoch.addStimulus(obj.rig.getDevice(obj.led2), obj.createLedStimulusSingle( ...
+                    obj.preTime + obj.betweenOnsetsTime, ...
+                    obj.stimTime, ...
                     obj.tailTime, ...
-                    obj.flash2Mean, ...
-                    obj.flash2Amplitude));
+                    obj.led2Mean, ...
+                    obj.led2Amplitude));
             end
             
             epoch.addResponse(obj.rig.getDevice(obj.amp));
@@ -144,9 +153,12 @@ classdef LedPulsePair < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareInterval(obj, interval)
             prepareInterval@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, interval);
             
-            %TODO add background to all LEDs
-            device = obj.rig.getDevice(obj.led);
-            interval.addDirectCurrentStimulus(device, device.background, obj.interpulseInterval, obj.sampleRate);
+            device1 = obj.rig.getDevice(obj.led1);
+            interval.addDirectCurrentStimulus(device1, device1.background, obj.interpulseInterval, obj.sampleRate);
+            if ~strcmp(obj.led1, obj.led2)
+                device2 = obj.rig.getDevice(obj.led2);
+                interval.addDirectCurrentStimulus(device2, device2.background, obj.interpulseInterval, obj.sampleRate);
+            end
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
