@@ -119,7 +119,7 @@ classdef LedPulsePair < edu.washington.riekelab.protocols.RiekeLabProtocol
                 obj.led2Amplitude);
             
             sumGen = symphonyui.builtin.stimuli.SumGenerator();
-            sumGen.stimuli = {firstPulseStim.generate(), secondPulseStim.generate()};
+            sumGen.stimuli = {firstPulseStim, secondPulseStim};
             stim = sumGen.generate();
         end
         
