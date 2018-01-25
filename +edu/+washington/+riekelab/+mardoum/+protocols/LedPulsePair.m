@@ -2,7 +2,8 @@ classdef LedPulsePair < edu.washington.riekelab.protocols.RiekeLabProtocol
     % Presents a set of rectangular pulse stimuli to a specified LED and records from a specified amplifier.
     
     properties
-        led                             % Output LED
+        led1                            % Output LED
+        led2
         preTime = 10                    % Pulse leading duration (ms)
         stimTime = 100                  % Pulse duration (ms)
         tailTime = 400                  % Pulse trailing duration (ms)
@@ -21,7 +22,8 @@ classdef LedPulsePair < edu.washington.riekelab.protocols.RiekeLabProtocol
     end
     
     properties (Hidden)
-        ledType
+        led1Type
+        led2Type
         ampType
     end
     
@@ -30,7 +32,8 @@ classdef LedPulsePair < edu.washington.riekelab.protocols.RiekeLabProtocol
         function didSetRig(obj)
             didSetRig@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
-            [obj.led, obj.ledType] = obj.createDeviceNamesProperty('LED');
+            [obj.led1, obj.led1Type] = obj.createDeviceNamesProperty('LED'); % grabs options for LED dropdown menu
+            [obj.led2, obj.led2Type] = obj.createDeviceNamesProperty('LED');
             [obj.amp, obj.ampType] = obj.createDeviceNamesProperty('Amp');
         end
         
@@ -42,9 +45,10 @@ classdef LedPulsePair < edu.washington.riekelab.protocols.RiekeLabProtocol
             end
         end
         
-        function p = getPreview(obj, panel)
-            p = symphonyui.builtin.previews.StimuliPreview(panel, @()obj.createLedStimulus());
-        end
+        % Preview would need some work to handle possibilities 
+%         function p = getPreview(obj, panel)
+%             p = symphonyui.builtin.previews.StimuliPreview(panel, @()obj.createLedStimulus());
+%         end
         
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
@@ -66,27 +70,70 @@ classdef LedPulsePair < edu.washington.riekelab.protocols.RiekeLabProtocol
             end
             
             device = obj.rig.getDevice(obj.led);
+            % TODO: set appropriate backgrounds for 1 or 2 led stimulus
             device.background = symphonyui.core.Measurement(obj.lightMean, device.background.displayUnits);
         end
         
-        function stim = createLedStimulus(obj)
+        function stim = createLedStimulusOneFlash(obj, preTime, stimTime, tailTime, lightMean, lightAmplitude)
             gen = symphonyui.builtin.stimuli.PulseGenerator();
             
-            gen.preTime = obj.preTime;
-            gen.stimTime = obj.stimTime;
-            gen.tailTime = obj.tailTime;
-            gen.amplitude = obj.lightAmplitude;
-            gen.mean = obj.lightMean;
+            gen.preTime = preTime;
+            gen.stimTime = stimTime;
+            gen.tailTime = tailTime;
+            gen.amplitude = lightAmplitude;
+            gen.mean = lightMean;
             gen.sampleRate = obj.sampleRate;
             gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
             
             stim = gen.generate();
         end
         
+        function stim = createLedStimulusTwoFlashes(obj)
+            firstFlashStim = obj.createLedStimulusOneFlash( ...
+                obj.preTime, ...
+                obj.flashDuration, ...
+                obj.timeBetweenFlashes + obj.flashDuration + obj.tailTime, ...
+                obj.flash1Mean, ...
+                obj.flash1Amplitude);
+            
+            secondFlashStim = obj.createLedStimulusOneFlash( ...
+                obj.preTime + obj.flashDuration + obj.timeBetweenFlashes, ...
+                obj.flashDuration, ...
+                obj.tailTime, ...
+                0, ...
+                obj.flash2Amplitude);
+            
+            sumGen = symphonyui.builtin.stimuli.SumGenerator();
+            sumGen.stimuli = {firstFlashStim.generate(), secondFlashStim.generate()};
+            stim = sumGen.generate();
+        end
+        
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
-            epoch.addStimulus(obj.rig.getDevice(obj.led), obj.createLedStimulus());
+            if strcmp(obj.led1, obj.led2)
+                if obj.flash1Mean ~= obj.flash2Mean
+                   error('when using same led, means must be the same'); 
+                end
+                
+                epoch.addStimulus(obj.rig.getDevice(obj.led1), obj.createLedStimulusTwoFlashes());
+            else
+                epoch.addStimulus(obj.rig.getDevice(obj.led1), ...
+                    obj.createLedStimulusOneFlash( ...
+                    obj.preTime, ...
+                    obj.flashDuration, ...
+                    obj.timeBetweenFlashes + obj.flashDuration + obj.tailTime, ...
+                    obj.flash1Mean, ...
+                    obj.flash1Amplitude));
+                epoch.addStimulus(obj.rig.getDevice(obj.led2), ...
+                    obj.createLedStimulusOneFlash( ...
+                    obj.preTime + obj.flashDuration + obj.timeBetweenFlashes, ...
+                    obj.flashDuration, ...
+                    obj.tailTime, ...
+                    obj.flash2Mean, ...
+                    obj.flash2Amplitude));
+            end
+            
             epoch.addResponse(obj.rig.getDevice(obj.amp));
             
             if numel(obj.rig.getDeviceNames('Amp')) >= 2
@@ -97,6 +144,7 @@ classdef LedPulsePair < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareInterval(obj, interval)
             prepareInterval@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, interval);
             
+            %TODO add background to all LEDs
             device = obj.rig.getDevice(obj.led);
             interval.addDirectCurrentStimulus(device, device.background, obj.interpulseInterval, obj.sampleRate);
         end
@@ -122,4 +170,3 @@ classdef LedPulsePair < edu.washington.riekelab.protocols.RiekeLabProtocol
     end
     
 end
-
