@@ -191,7 +191,7 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
         
         function value = get.totalEpochs(obj)
-            value = obj.numberOfAverages * obj.numFlashTimes;
+            value = obj.numberOfAverages * obj.numOffsetTimes;
         end
         
         function value = get.numOffsetTimes(obj)
