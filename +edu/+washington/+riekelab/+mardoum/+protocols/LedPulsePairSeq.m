@@ -136,7 +136,7 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
-            disp(['numEpochsPrepapred at pE: ' num2str(obj.numEpochsPrepared)])
+            fprintf(['numEpochsPrepapred at pE: ' num2str(obj.numEpochsPrepared)])
             
 %             epochNum = obj.numEpochsPrepared; % jacob thinks obj.numEpochsPrepared starts at 1 (technically before first epoch is prepared)
 %             offsetTime = obj.offsetTimes((mod(epochNum - 1, numel(obj.offsetTimes)) + 1));
@@ -179,7 +179,7 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareInterval(obj, interval)
             prepareInterval@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, interval);
             
-            disp(['numEpochsPrepapred at pI: ' num2str(obj.numEpochsPrepared)])
+            fprintf(['numEpochsPrepapred at pI: ' num2str(obj.numEpochsPrepared)])
             
             % to standardize interval between adapting flashes:
 %             pulseNum = mod(obj.numEpochsPrepared - 1, obj.numOffsetTimes) + 1;
