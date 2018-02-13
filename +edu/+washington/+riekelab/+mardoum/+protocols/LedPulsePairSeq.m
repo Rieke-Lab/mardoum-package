@@ -70,7 +70,6 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
             
             if numel(obj.rig.getDeviceNames('Amp')) < 2
                 obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-%                 obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp));
                 obj.showFigure('edu.washington.riekelab.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp),'psth',obj.psth);
                 obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
                     'baselineRegion', [0 obj.preTime], ...
@@ -136,8 +135,6 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
-            fprintf(['numEpochsPrepapred at pE: ' num2str(obj.numEpochsPrepared)])
-            
 %             epochNum = obj.numEpochsPrepared; % jacob thinks obj.numEpochsPrepared starts at 1 (technically before first epoch is prepared)
 %             offsetTime = obj.offsetTimes((mod(epochNum - 1, numel(obj.offsetTimes)) + 1));
             pulseNum = mod(obj.numEpochsPrepared - 1, obj.numOffsetTimes) + 1;
@@ -179,18 +176,19 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareInterval(obj, interval)
             prepareInterval@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, interval);
             
-            fprintf(['numEpochsPrepapred at pI: ' num2str(obj.numEpochsPrepared)])
-            
-            % to standardize interval between adapting flashes:
-%             pulseNum = mod(obj.numEpochsPrepared - 1, obj.numOffsetTimes) + 1;
-%             offsetTime = obj.flashOffsetTimes(pulseNum);
-%             timeToAdd
+            % note numEpochsPrepared is the same here as in prepareEpoch for each epoch
+            % to standardize interval between adapting flashes: 
+            pulseNum = mod(obj.numEpochsPrepared - 1, obj.numOffsetTimes) + 1;
+            offsetTime = obj.flashOffsetTimes(pulseNum);
+            maxOffsetTime = obj.flashOffsetTimes(obj.numOffsetTimes);
+            timeToAdd = (maxOffsetTime - offsetTime) * 0.001; % convert from ms to s
+            currIntervalTime = obj.interpulseInterval + timeToAdd;
             
             device1 = obj.rig.getDevice(obj.led1);
-            interval.addDirectCurrentStimulus(device1, device1.background, obj.interpulseInterval, obj.sampleRate);
+            interval.addDirectCurrentStimulus(device1, device1.background, currIntervalTime, obj.sampleRate);
             if ~strcmp(obj.led1, obj.led2)
                 device2 = obj.rig.getDevice(obj.led2);
-                interval.addDirectCurrentStimulus(device2, device2.background, obj.interpulseInterval, obj.sampleRate);
+                interval.addDirectCurrentStimulus(device2, device2.background, currIntervalTime, obj.sampleRate);
             end
         end
         
