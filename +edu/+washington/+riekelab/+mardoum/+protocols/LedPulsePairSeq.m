@@ -111,6 +111,7 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
         
         function stim = createLedStimulusPairSame(obj, offsetTime)
+            assert(strcmp(obj.led1, obj.led2));
             firstPulseStim = obj.createLedStimulusSingle( ...
                 obj.led1, ...
                 obj.preTime, ...
@@ -118,9 +119,8 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
                 offsetTime + obj.tailTime, ...
                 obj.led1Mean, ...
                 obj.led1Amplitude);
-            
             secondPulseStim = obj.createLedStimulusSingle( ...
-                obj.led2, ... % function only called when led1 and led2 are same
+                obj.led2, ...
                 obj.preTime + offsetTime, ...
                 obj.stimTime, ...
                 obj.tailTime, ...
@@ -135,51 +135,70 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
-%             epochNum = obj.numEpochsPrepared; % jacob thinks obj.numEpochsPrepared starts at 1 (technically before first epoch is prepared)
-%             offsetTime = obj.offsetTimes((mod(epochNum - 1, numel(obj.offsetTimes)) + 1));
-            pulseNum = mod(obj.numEpochsPrepared - 1, obj.numOffsetTimes) + 1;
-            offsetTime = obj.flashOffsetTimes(pulseNum);
+            [~, offsetTime] = getCycleStage();
             epoch.addParameter('offsetTime', offsetTime);
-
-            if strcmp(obj.led1, obj.led2)
-                % use SumGenerator
-                stim = obj.createLedStimulusPairSame(offsetTime);
-                epoch.addStimulus(obj.rig.getDevice(obj.led1), stim);
-            else
-                % run two simultaneous pulse protocols
-                stim1 = obj.createLedStimulusSingle( ...
+            
+            if offsetTime == -2         % Adapting flash alone
+                stim = obj.createLedStimulusSingle( ...
                     obj.led1, ...
                     obj.preTime, ...
                     obj.stimTime, ...
-                    offsetTime + obj.tailTime, ...
+                    obj.tailTime, ...
                     obj.led1Mean, ...
                     obj.led1Amplitude);
-                epoch.addStimulus(obj.rig.getDevice(obj.led1), stim1);
-                
-                stim2 = obj.createLedStimulusSingle( ...
+                epoch.addStimulus(obj.rig.getDevice(obj.led1), stim);
+            elseif offsetTime == -1     % Test flash alone
+                stim = obj.createLedStimulusSingle( ...
                     obj.led2, ...
-                    obj.preTime + offsetTime, ...
+                    obj.preTime, ...
                     obj.stimTime, ...
                     obj.tailTime, ...
                     obj.led2Mean, ...
                     obj.led2Amplitude);
-                epoch.addStimulus(obj.rig.getDevice(obj.led2), stim2);
-            end
-            
-            epoch.addResponse(obj.rig.getDevice(obj.amp));
-            
-            if numel(obj.rig.getDeviceNames('Amp')) >= 2
-                epoch.addResponse(obj.rig.getDevice(obj.amp2));
+                epoch.addStimulus(obj.rig.getDevice(obj.led2), stim);
+            else                        % Paired Adapting and test flashes
+                if strcmp(obj.led1, obj.led2)
+                    % use SumGenerator
+                    stim = obj.createLedStimulusPairSame(offsetTime);
+                    epoch.addStimulus(obj.rig.getDevice(obj.led1), stim);
+                else
+                    % run two simultaneous pulse protocols
+                    stim1 = obj.createLedStimulusSingle( ...
+                        obj.led1, ...
+                        obj.preTime, ...
+                        obj.stimTime, ...
+                        offsetTime + obj.tailTime, ...
+                        obj.led1Mean, ...
+                        obj.led1Amplitude);
+                    epoch.addStimulus(obj.rig.getDevice(obj.led1), stim1);
+                    
+                    stim2 = obj.createLedStimulusSingle( ...
+                        obj.led2, ...
+                        obj.preTime + offsetTime, ...
+                        obj.stimTime, ...
+                        obj.tailTime, ...
+                        obj.led2Mean, ...
+                        obj.led2Amplitude);
+                    epoch.addStimulus(obj.rig.getDevice(obj.led2), stim2);
+                end
+                
+                epoch.addResponse(obj.rig.getDevice(obj.amp));
+                
+                if numel(obj.rig.getDeviceNames('Amp')) >= 2
+                    epoch.addResponse(obj.rig.getDevice(obj.amp2));
+                end
             end
         end
         
         function prepareInterval(obj, interval)
             prepareInterval@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, interval);
             
-            % note numEpochsPrepared is the same here as in prepareEpoch for each epoch
-            % to standardize interval between adapting flashes: 
-            pulseNum = mod(obj.numEpochsPrepared - 1, obj.numOffsetTimes) + 1;
-            offsetTime = obj.flashOffsetTimes(pulseNum);
+            % Standardize interval between adapting flashes: 
+            % note numEpochsPrepared does not change between prepareEpoch() and prepareInterval()
+            [~, offsetTime] = getCycleStage();
+            if offsetTime < 0   % modification only for current purpose
+                offsetTime = 0;
+            end
             maxOffsetTime = obj.flashOffsetTimes(obj.numOffsetTimes);
             timeToAdd = (maxOffsetTime - offsetTime) * 0.001; % convert from ms to s
             currIntervalTime = obj.interpulseInterval + timeToAdd;
@@ -192,6 +211,15 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
             end
         end
         
+        function [stageID, offsetTime] = getCycleStage(obj)
+            stageIDs =    [-2 -1 1:obj.numOffsetTimes];
+            offsetTimes = [-2 -1 obj.flashOffsetTimes];
+            % note obj.numEpochsPrepared starts at 1 (before first epoch is prepared)
+            idx = mod(obj.numEpochsPrepared - 1, obj.numOffsetTimes + 2) + 1;
+            stageID = stageIDs(idx);
+            offsetTime = offsetTimes(idx);
+        end
+        
         function tf = shouldContinuePreparingEpochs(obj)
             tf = obj.numEpochsPrepared < obj.totalEpochs;
         end
@@ -201,7 +229,7 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
         
         function value = get.totalEpochs(obj)
-            value = obj.numberOfAverages * obj.numOffsetTimes;
+            value = obj.numberOfAverages * (obj.numOffsetTimes + 2);
         end
         
         function value = get.numOffsetTimes(obj)
