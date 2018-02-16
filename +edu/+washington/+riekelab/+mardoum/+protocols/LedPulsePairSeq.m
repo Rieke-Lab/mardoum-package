@@ -181,12 +181,11 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
                         obj.led2Amplitude);
                     epoch.addStimulus(obj.rig.getDevice(obj.led2), stim2);
                 end
-                
-                epoch.addResponse(obj.rig.getDevice(obj.amp));
-                
-                if numel(obj.rig.getDeviceNames('Amp')) >= 2
-                    epoch.addResponse(obj.rig.getDevice(obj.amp2));
-                end
+            end
+            
+            epoch.addResponse(obj.rig.getDevice(obj.amp));
+            if numel(obj.rig.getDeviceNames('Amp')) >= 2
+                epoch.addResponse(obj.rig.getDevice(obj.amp2));
             end
         end
         
