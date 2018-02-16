@@ -135,7 +135,7 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
-            [~, offsetTime] = getCycleStage();
+            offsetTime = getOffsetTime();
             epoch.addParameter('offsetTime', offsetTime);
             
             if offsetTime == -2         % Adapting flash alone
@@ -195,7 +195,7 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
             
             % Standardize interval between adapting flashes: 
             % note numEpochsPrepared does not change between prepareEpoch() and prepareInterval()
-            [~, offsetTime] = getCycleStage();
+            offsetTime = getOffsetTime();
             if offsetTime < 0   % modification only for current purpose
                 offsetTime = 0;
             end
@@ -211,12 +211,12 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
             end
         end
         
-        function [stageID, offsetTime] = getCycleStage(obj)
-            stageIDs =    [-2 -1 1:obj.numOffsetTimes];
+        function offsetTime = getOffsetTime(obj)
+%             stageIDs =    [-2 -1 1:obj.numOffsetTimes];
             offsetTimes = [-2 -1 obj.flashOffsetTimes];
             % note obj.numEpochsPrepared starts at 1 (before first epoch is prepared)
             idx = mod(obj.numEpochsPrepared - 1, obj.numOffsetTimes + 2) + 1;
-            stageID = stageIDs(idx);
+%             stageID = stageIDs(idx);
             offsetTime = offsetTimes(idx);
         end
         
