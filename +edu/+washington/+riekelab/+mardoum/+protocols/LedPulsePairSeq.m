@@ -135,7 +135,7 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
-            offsetTime = getOffsetTime();
+            offsetTime = obj.getOffsetTime();
             epoch.addParameter('offsetTime', offsetTime);
             
             if offsetTime == -2         % Adapting flash alone
@@ -195,7 +195,7 @@ classdef LedPulsePairSeq < edu.washington.riekelab.protocols.RiekeLabProtocol
             
             % Standardize interval between adapting flashes: 
             % note numEpochsPrepared does not change between prepareEpoch() and prepareInterval()
-            offsetTime = getOffsetTime();
+            offsetTime = obj.getOffsetTime();
             if offsetTime < 0   % modification only for current purpose
                 offsetTime = 0;
             end
