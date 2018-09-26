@@ -1,4 +1,4 @@
-classdef TwoLedNoiseFamily < edu.washington.riekelab.protocols.RiekeLabProtocol
+classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
     
     properties
         led1                            % Output LED 1
