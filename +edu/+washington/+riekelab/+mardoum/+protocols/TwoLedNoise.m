@@ -14,8 +14,10 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         stdv2 = 0.005                   % Noise standard deviation, post-smoothing, LED 2 (V or norm. [0-1] depending on LED units)
         mean1 = 0.1                     % Noise and LED background mean, LED 1 (V or norm. [0-1] depending on LED units)
         mean2 = 0.1                     % Noise and LED background mean, LED 2 (V or norm. [0-1] depending on LED units)
-        useRandomSeed = false           % Use a random seed?
+        useRandomSeed = false           % Use random FIRST seed?
+        useRepeatedSeed = false         % Repeat first seed?
         amp                             % Input amplifier
+        psth = false                    % Toggle PSTH
     end
     
     properties (Dependent, SetAccess = private)
@@ -71,7 +73,8 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
             
             if numel(obj.rig.getDeviceNames('Amp')) < 2
                 obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-                obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp));
+                % obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp));
+                obj.showFigure('edu.washington.riekelab.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp),'psth',obj.psth);
                 obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
                     'baselineRegion', [0 obj.preTime], ...
                     'measurementRegion', [obj.preTime obj.preTime+obj.stimTime]);
@@ -132,16 +135,21 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
-            persistent seed1;
-            persistent seed2;
+            if obj.useRepeatedSeed
+                persistent seed1;
+                persistent seed2;
+            end
             if obj.numEpochsPrepared == 1 % note obj.numEpochsPrepared starts at 1 (before first epoch is prepared)
-                if ~obj.useRandomSeed
-                    seed1 = 0;
-                    seed2 = 1;
-                else
+                if obj.useRandomSeed
                     seed1 = RandStream.shuffleSeed;
                     seed2 = RandStream.shuffleSeed;
+                else
+                    seed1 = 0;
+                    seed2 = 1;
                 end
+            elseif ~obj.useRepeatedSeed % and obj.numEpochsPrepared > 1
+                seed1 = RandStream.shuffleSeed;
+                seed2 = RandStream.shuffleSeed;
             end
             epoch.addParameter('seed1', seed1);
             epoch.addParameter('seed2', seed2);
