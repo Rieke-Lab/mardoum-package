@@ -66,8 +66,11 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
             
             if numel(obj.rig.getDeviceNames('Amp')) < 2
                 obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
+
                 % obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp));
-                obj.showFigure('edu.washington.riekelab.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp),'psth',obj.psth);
+                % obj.showFigure('edu.washington.riekelab.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp),'psth',obj.psth);
+                obj.showFigure('edu.washington.riekelab.mardoum.figures.ResponseFigure', obj.rig.getDevice(obj.amp),'psth',obj.psth);
+
                 obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
                     'baselineRegion', [0 obj.preTime], ...
                     'measurementRegion', [obj.preTime obj.preTime+obj.stimTime]);
@@ -132,7 +135,7 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
                 persistent seed1;
                 persistent seed2;
             end
-            if obj.numEpochsPrepared == 1 % note obj.numEpochsPrepared starts at 1 (before first epoch is prepared)
+            if obj.numEpochsPrepared == 1  % note obj.numEpochsPrepared starts at 1 (before first epoch is prepared)
                 if obj.useRandomFirstSeed
                     seed1 = RandStream.shuffleSeed;
                     seed2 = RandStream.shuffleSeed;
@@ -140,9 +143,11 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
                     seed1 = 0;
                     seed2 = 1;
                 end
-            elseif ~obj.useRepeatedSeed   % and remember obj.numEpochsPrepared > 1
-                seed1 = RandStream.shuffleSeed;
-                seed2 = RandStream.shuffleSeed;
+            else
+                if ~obj.useRepeatedSeed && mod(obj.numEpochsPrepared - 1, 3) == 0  % only change seed at start of cycle
+                    seed1 = RandStream.shuffleSeed;
+                    seed2 = RandStream.shuffleSeed;
+                end
             end
             epoch.addParameter('seed1', seed1);
             epoch.addParameter('seed2', seed2);
