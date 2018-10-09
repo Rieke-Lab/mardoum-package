@@ -68,8 +68,8 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
                 obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
 
                 % obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp));
-                % obj.showFigure('edu.washington.riekelab.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp),'psth',obj.psth);
-                obj.showFigure('edu.washington.riekelab.mardoum.figures.ResponseFigure', obj.rig.getDevice(obj.amp),'psth',obj.psth);
+                obj.showFigure('edu.washington.riekelab.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp),'psth',obj.psth);
+                % obj.showFigure('edu.washington.riekelab.mardoum.figures.ResponseFigure', obj.rig.getDevice(obj.amp),'psth',obj.psth);
 
                 obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
                     'baselineRegion', [0 obj.preTime], ...
@@ -131,10 +131,8 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
-            if obj.useRepeatedSeed
-                persistent seed1;
-                persistent seed2;
-            end
+            persistent seed1;
+            persistent seed2;
             if obj.numEpochsPrepared == 1  % note obj.numEpochsPrepared starts at 1 (before first epoch is prepared)
                 if obj.useRandomFirstSeed
                     seed1 = RandStream.shuffleSeed;
