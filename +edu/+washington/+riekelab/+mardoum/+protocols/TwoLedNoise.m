@@ -1,5 +1,9 @@
 classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
-    
+    % Presents gaussian noise stimuli from two LEDs, first separately and then simultaneously. A random seed can optionally be used 
+    % for the first cycle, otherwise a constant seed is used for the first cycle each time the user runs the protocol. A new random
+    % seed can optionally be used for each subsequent cycle, otherwise the seeds from the first cycle will be repeated. This option
+    % is available regardless of whether a random seed is used on the first cycle.
+
     properties
         led1                            % Output LED 1
         led2                            % Output LED 2
@@ -14,7 +18,7 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         stdv2 = 0.005                   % Noise standard deviation, post-smoothing, LED 2 (V or norm. [0-1] depending on LED units)
         mean1 = 0.1                     % Noise and LED background mean, LED 1 (V or norm. [0-1] depending on LED units)
         mean2 = 0.1                     % Noise and LED background mean, LED 2 (V or norm. [0-1] depending on LED units)
-        useRandomSeed = false           % Use random FIRST seed?
+        useRandomFirstSeed = false      % Use random first seed?
         useRepeatedSeed = false         % Repeat first seed?
         amp                             % Input amplifier
         psth = false                    % Toggle PSTH
@@ -25,7 +29,7 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
     end
     
     properties 
-        numberOfAverages = uint16(5)    % Number of families
+        numberOfCycles = uint16(5)      % Number of cycles
         interpulseInterval = 0          % Duration between noise stimuli (s)
     end
     
@@ -54,18 +58,7 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
         
         % function p = getPreview(obj, panel)
-        %     p = symphonyui.builtin.previews.StimuliPreview(panel, @()createPreviewStimuli(obj));
-        %     function s = createPreviewStimuli(obj)
-        %         s = cell(1, obj.pulsesInFamily);
-        %         for i = 1:numel(s)
-        %             if ~obj.useRandomSeed
-        %                 seed = 0;
-        %             elseif mod(i - 1, obj.repeatsPerStdv) == 0
-        %                 seed = RandStream.shuffleSeed;
-        %             end
-        %             s{i} = obj.createLedStimulus(i, seed);
-        %         end
-        %     end
+        % 
         % end
         
         function prepareRun(obj)
@@ -140,14 +133,14 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
                 persistent seed2;
             end
             if obj.numEpochsPrepared == 1 % note obj.numEpochsPrepared starts at 1 (before first epoch is prepared)
-                if obj.useRandomSeed
+                if obj.useRandomFirstSeed
                     seed1 = RandStream.shuffleSeed;
                     seed2 = RandStream.shuffleSeed;
                 else
                     seed1 = 0;
                     seed2 = 1;
                 end
-            elseif ~obj.useRepeatedSeed % and obj.numEpochsPrepared > 1
+            elseif ~obj.useRepeatedSeed   % and remember obj.numEpochsPrepared > 1
                 seed1 = RandStream.shuffleSeed;
                 seed2 = RandStream.shuffleSeed;
             end
@@ -183,11 +176,11 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
 
         function tf = shouldContinuePreparingEpochs(obj)
-            tf = obj.numEpochsPrepared < 3 * obj.numberOfAverages;
+            tf = obj.numEpochsPrepared < 3 * obj.numberOfCycles;
         end
         
         function tf = shouldContinueRun(obj)
-            tf = obj.numEpochsCompleted < 3 * obj.numberOfAverages;
+            tf = obj.numEpochsCompleted < 3 * obj.numberOfCycles;
         end
         
         function a = get.amp2(obj)
