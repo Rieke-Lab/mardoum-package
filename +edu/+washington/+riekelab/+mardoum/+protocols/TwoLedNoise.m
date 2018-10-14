@@ -1,8 +1,17 @@
 classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
-    % Presents gaussian noise stimuli from two LEDs, first separately and then simultaneously. A random seed can optionally be used 
-    % for the first cycle, otherwise a constant seed is used for the first cycle each time the user runs the protocol. A new random
-    % seed can optionally be used for each subsequent cycle, otherwise the seeds from the first cycle will be repeated. This option
-    % is available regardless of whether a random seed is used on the first cycle.
+    % Presents gaussian noise stimuli from two LEDs, first individually and then simultaneously. A
+    % single cycle is composed of three epochs, each falling into a different stimulus group: first,
+    % noise is presented with LED 1, then different noise is presented with LED 2, then both of these
+    % noise stimuli are repeated simultaneously. Two random seeds can optionally be used for the first
+    % cycle, otherwise constant seeds are used for the first cycle any time the protocol is run. New
+    % random seeds can optionally be used during each subsequent cycle, otherwise the seeds from the
+    % first cycle will be repeated. This option is available regardless of whether a random seed is used
+    % on the first cycle.
+
+    % Extra parameters written to each epoch: 
+    %   - stimulus group
+    %   - seed 1
+    %   - seed 2
 
     properties
         led1                            % Output LED 1
@@ -14,6 +23,7 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         frequencyCutoff2 = 60           % Noise frequency cutoff for smoothing, LED 2 (Hz)
         numberOfFilters1 = 4            % Number of filters in cascade for noise smoothing, LED 1
         numberOfFilters2 = 4            % Number of filters in cascade for noise smoothing, LED 2
+        
         stdv1 = 0.005                   % Noise standard deviation, post-smoothing, LED 1 (V or norm. [0-1] depending on LED units)
         stdv2 = 0.005                   % Noise standard deviation, post-smoothing, LED 2 (V or norm. [0-1] depending on LED units)
         mean1 = 0.1                     % Noise and LED background mean, LED 1 (V or norm. [0-1] depending on LED units)
@@ -21,7 +31,6 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         useRandomFirstSeed = false      % Use random first seed?
         useRepeatedSeed = false         % Repeat first seed?
         amp                             % Input amplifier
-        psth = false                    % Toggle PSTH
     end
     
     properties (Dependent, SetAccess = private)
@@ -29,6 +38,7 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
     end
     
     properties 
+        psth = false                    % Toggle PSTH
         numberOfCycles = uint16(5)      % Number of cycles
         interpulseInterval = 0          % Duration between noise stimuli (s)
     end
@@ -67,9 +77,15 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
             if numel(obj.rig.getDeviceNames('Amp')) < 2
                 obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
 
-                % obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp));
-                obj.showFigure('edu.washington.riekelab.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp),'psth',obj.psth);
-                % obj.showFigure('edu.washington.riekelab.mardoum.figures.ResponseFigure', obj.rig.getDevice(obj.amp),'psth',obj.psth);
+                if obj.useRepeatedSeed
+                    obj.showFigure('edu.washington.riekelab.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp), ...
+                        'psth', obj.psth, 'groupBy', {'stimulusGroup'});
+                else
+                    % TODO: Should overlay PSTHs for 3 epochs in cycle and then start over for next cycle
+                    % obj.showFigure('edu.washington.riekelab.mardoum.figures.ResponseFigure', obj.rig.getDevice(obj.amp), ...
+                    %     'psth',obj.psth);
+                    obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp));
+                end
 
                 obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
                     'baselineRegion', [0 obj.preTime], ...
@@ -131,6 +147,9 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
+            stimulusGroup = obj.getStimulusGroup();
+            epoch.addParameter('stimulusGroup', stimulusGroup);
+
             persistent seed1;
             persistent seed2;
             if obj.numEpochsPrepared == 1  % note obj.numEpochsPrepared starts at 1 (before first epoch is prepared)
@@ -142,7 +161,7 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
                     seed2 = 1;
                 end
             else
-                if ~obj.useRepeatedSeed && mod(obj.numEpochsPrepared - 1, 3) == 0  % only change seed at start of cycle
+                if ~obj.useRepeatedSeed && stimulusGroup == 1  % only change seed at start of cycle
                     seed1 = RandStream.shuffleSeed;
                     seed2 = RandStream.shuffleSeed;
                 end
@@ -150,13 +169,13 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
             epoch.addParameter('seed1', seed1);
             epoch.addParameter('seed2', seed2);
             
-            if mod(obj.numEpochsPrepared - 1, 3) == 0       % LED 1 alone
+            if stimulusGroup == 1                           % LED 1 alone
                 stim = obj.createLedStimulus(1, seed1);
                 epoch.addStimulus(obj.rig.getDevice(obj.led1), stim);
-            elseif mod(obj.numEpochsPrepared - 1, 3) == 1   % LED 2 alone
+            elseif stimulusGroup == 2                       % LED 2 alone
                 stim = obj.createLedStimulus(2, seed2);
                 epoch.addStimulus(obj.rig.getDevice(obj.led2), stim);
-            else                                            % LEDs 1 and 2 simultaneously
+            elseif stimulusGroup == 3                       % LEDs 1 and 2 simultaneously
                 stim1 = obj.createLedStimulus(1, seed1);
                 stim2 = obj.createLedStimulus(2, seed2);
                 epoch.addStimulus(obj.rig.getDevice(obj.led1), stim1);
@@ -176,6 +195,10 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
             interval.addDirectCurrentStimulus(device1, device1.background, obj.interpulseInterval, obj.sampleRate);
             device2 = obj.rig.getDevice(obj.led2);
             interval.addDirectCurrentStimulus(device2, device2.background, obj.interpulseInterval, obj.sampleRate);
+        end
+
+        function stimulusGroup = getStimulusGroup(obj)
+            stimulusGroup = mod(obj.numEpochsPrepared - 1, 3) + 1;
         end
 
         function tf = shouldContinuePreparingEpochs(obj)
