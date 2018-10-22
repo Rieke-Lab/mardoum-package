@@ -5,13 +5,13 @@ classdef FullFieldNoise < edu.washington.riekelab.protocols.RiekeLabStageProtoco
         stimTime = 8000                 % ms
         tailTime = 500                  % ms
         apertureDiameter = 0            % um
-        noiseStdv = 0.3                 % contrast, as fraction of mean
+        noiseStdv = 0.3                 % Contrast, as fraction of mean
         backgroundIntensity = 0.5       % (0-1)
         frameDwell = 1                  % Frames per noise update
         useRandomSeed = true            % false = repeated noise trajectory (seed 0)
 
         onlineAnalysis = 'none'
-        numberOfAverages = uint16(10)   % number of epochs to queue
+        numberOfAverages = uint16(10)   % Number of epochs to queue
         amp                             % Output amplifier
     end
 
@@ -33,7 +33,7 @@ classdef FullFieldNoise < edu.washington.riekelab.protocols.RiekeLabStageProtoco
             prepareRun@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj);
 
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-            obj.showFigure('edu.washington.riekelab.turner.figures.FrameTimingFigure',...
+            obj.showFigure('edu.washington.riekelab.figures.FrameTimingFigure',...
                 obj.rig.getDevice('Stage'), obj.rig.getDevice('Frame Monitor'));
             if ~strcmp(obj.onlineAnalysis,'none')
                 obj.showFigure('edu.washington.riekelab.turner.figures.LinearFilterFigure',...
@@ -67,7 +67,7 @@ classdef FullFieldNoise < edu.washington.riekelab.protocols.RiekeLabStageProtoco
         function p = createPresentation(obj)
             canvasSize = obj.rig.getDevice('Stage').getCanvasSize();
             
-            % convert from microns to pixels...
+            % Convert from microns to pixels...
             apertureDiameterPix = obj.rig.getDevice('Stage').um2pix(obj.apertureDiameter);
             
             p = stage.core.Presentation((obj.preTime + obj.stimTime + obj.tailTime) * 1e-3); %create presentation of specified duration
@@ -81,14 +81,14 @@ classdef FullFieldNoise < edu.washington.riekelab.protocols.RiekeLabStageProtoco
             preFrames = round(60 * (obj.preTime/1e3));
             noiseValue = stage.builtin.controllers.PropertyController(noiseRect, 'color',...
                 @(state)getNoiseIntensity(obj, state.frame - preFrames));
-            p.addController(noiseValue); %add the controller
+            p.addController(noiseValue);  % add the controller
 
             function i = getNoiseIntensity(obj, frame)
                 persistent intensity;
-                if frame<0 %pre frames. frame 0 starts stimPts
+                if frame<0  % pre frames. frame 0 starts stimPts
                     intensity = obj.backgroundIntensity;
-                else %in stim frames
-                    if mod(frame, obj.frameDwell) == 0 %noise update
+                else        % in stim frames
+                    if mod(frame, obj.frameDwell) == 0  % noise update
                         intensity = obj.backgroundIntensity + ...
                             obj.noiseStdv * obj.backgroundIntensity * obj.noiseStream.randn;
                     end
@@ -96,17 +96,17 @@ classdef FullFieldNoise < edu.washington.riekelab.protocols.RiekeLabStageProtoco
                 i = intensity;
             end
 
-            if (obj.apertureDiameter > 0) %% Create aperture
+            if (obj.apertureDiameter > 0)  % create aperture
                 aperture = stage.builtin.stimuli.Rectangle();
                 aperture.position = canvasSize/2;
                 aperture.color = obj.backgroundIntensity;
                 aperture.size = [max(canvasSize) max(canvasSize)];
                 mask = stage.core.Mask.createCircularAperture(apertureDiameterPix/max(canvasSize), 1024); %circular aperture
                 aperture.setMask(mask);
-                p.addStimulus(aperture); %add aperture
+                p.addStimulus(aperture);  % add aperture
             end
             
-            % hide during pre & post
+            % Hide during pre & post
             noiseRectVisible = stage.builtin.controllers.PropertyController(noiseRect, 'visible', ...
                 @(state)state.time >= obj.preTime * 1e-3 && state.time < (obj.preTime + obj.stimTime) * 1e-3);
             p.addController(noiseRectVisible);
