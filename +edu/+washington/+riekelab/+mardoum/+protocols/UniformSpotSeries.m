@@ -143,7 +143,7 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             else % image-derived
                 timeVector = (0:(length(obj.currSequence)-1)) / 60;     % sec  % TODO optional compatibility with doves which is 200 Hz
                 displayValue = stage.builtin.controllers.PropertyController(rect, 'color',...
-                    @(state)getSeqIntensity(obj, state.time - preFrames, obj.currSequence, timeVector));
+                    @(state)getSeqIntensity(obj, state.time - obj.preTime/1e3, obj.currSequence, timeVector));
             end
 
             obj.stimulusVector = [obj.stimulusVector; displayValue];
@@ -161,14 +161,14 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
                 next = intensity;  
             end
 
-            function next = getSeqIntensity(obj, frame, sequence, timeVector)
-                if frame < 0  % pre frames. frame 0 starts stimPts
+            function next = getSeqIntensity(obj, time, sequence, timeVector)
+                if time < 0  % pre frames. frame 0 starts stimPts
                     next = obj.noiseMean;
                 else          % in stim frames
-                    if frame > timeVector(end)  % out of eye trajectory, back to mean
+                    if time > timeVector(end)  % out of eye trajectory, back to mean
                         next = obj.backgroundIntensity;
                     else                       % within eye trajectory and stim time
-                        next = interp1(timeVector, sequence, frame);
+                        next = interp1(timeVector, sequence, time);
                     end
                 end
             end
