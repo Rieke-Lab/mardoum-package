@@ -31,6 +31,8 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
         stimulusFile
         stimulusDataset
         currSequence
+
+        stimulusVector  % temporary, for troubleshooting
     end
     
     methods
@@ -66,6 +68,8 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             % % Get random ordering
             % entriesPerImage = length(DS(1).doves.sequence);
             % order = randperm(length(DS) * entriesPerImage);
+
+            obj.stimulusVector = [-1];
         end
         
         function prepareEpoch(obj, epoch)
@@ -107,7 +111,10 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             end
 
             epoch.addParameter('stimulusGroup', stimulusGroup);
-            epoch.addParameter('backgroundIntensity', obj.backgroundIntensity);            
+            epoch.addParameter('backgroundIntensity', obj.backgroundIntensity);
+
+            epoch.addParameter('stimulusVector', obj.stimulusVector);  % add stimulusVector from prev epoch to current epoch (temporary hack)
+            obj.stimulusVector = [-1];
         end
 
 
@@ -139,6 +146,7 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
                     @(state)getSeqIntensity(obj, state.time - preFrames, obj.currSequence, timeVector));
             end
 
+            obj.stimulusVector = [obj.stimulusVector; displayValue];
             p.addController(displayValue);  % add the controller
 
             function next = getNoiseIntensity(obj, frame)
