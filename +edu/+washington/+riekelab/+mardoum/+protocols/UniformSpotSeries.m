@@ -25,6 +25,7 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
         backgroundIntensity
         % onlineAnalysisType = symphonyui.core.PropertyType('char', 'row', {'none', 'extracellular', 'exc', 'inh'})
         noiseSeed
+        noiseStream
 
         % additional parameters for image-derived sequences
         stimulusFile
@@ -60,7 +61,7 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             % with each struct(i) having fields: ImageIndex SubjectIndex ImageName ImageMin 
             % ImageMax ImageMean centerTrajectory surroundTrajectory
             resourcesDir = 'C:\Users\Public\Documents\mardoum-package\resources\';
-            obj.stimulusFile = 'luminanceSequenceDataset_20181105.mat';
+            obj.stimulusFile = 'luminanceSequenceDataset_test_20181105.mat';
             S = load([resourcesDir, obj.stimulusFile]);
             obj.stimulusDataset = S.DS;
 
@@ -79,7 +80,7 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             stimulusGroup = obj.getStimulusGroup();
 
             if stimulusGroup == 1  % noise epoch
-                obj.backgroundIntensity = noiseMean;
+                obj.backgroundIntensity = obj.noiseMean;
                 % Determine seed values. At start of epoch, set random stream
                 if obj.useRandomSeed
                     obj.noiseSeed = RandStream.shuffleSeed;
@@ -92,10 +93,10 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             else 
                 if stimulusGroup == 2  % image-derived brownian FEM
                     % Pull appropriate stimuli. Scale such that brightest point in original image is 1.0 on the monitor
-                    obj.currSequence = obj.stimulusDataset(obj.imageIndex).brownian.sequence(runIndex).center / ...
+                    obj.currSequence = obj.stimulusDataset(obj.imageIndex).brownian.sequence(obj.runIndex).center / ...
                          obj.stimulusDataset(obj.imageIndex).img.max;
                 elseif stimulusGroup == 3  % image-derived synthetic saccades
-                    obj.currSequence = obj.stimulusDataset(obj.imageIndex).synthSaccades.sequence(runIndex).center / ...
+                    obj.currSequence = obj.stimulusDataset(obj.imageIndex).synthSaccades.sequence(obj.runIndex).center / ...
                          obj.stimulusDataset(obj.imageIndex).img.max;
                 end
 
@@ -139,7 +140,7 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             else % image-derived
                 timeVector = (0:(length(obj.currSequence)-1)) / 60;     % sec  % TODO optional compatibility with doves which is 200 Hz
                 displayValue = stage.builtin.controllers.PropertyController(rect, 'color',...
-                    @(state)getSeqIntensity(obj, state.time - preFrames, currSequence, timeVector));
+                    @(state)getSeqIntensity(obj, state.time - preFrames, obj.currSequence, timeVector));
             end
 
             obj.stimulusVector = [obj.stimulusVector; displayValue]
