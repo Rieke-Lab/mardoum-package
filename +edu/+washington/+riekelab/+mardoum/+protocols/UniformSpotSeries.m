@@ -3,7 +3,7 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
     properties
         % parameters for noise
         preTime = 500                   % ms
-        stimTime = 5000                 % ms
+        stimTime = 5200                 % ms
         tailTime = 500                  % ms
         apertureDiameter = 200          % um
         noiseMean = 0.5                 % (0-1)
