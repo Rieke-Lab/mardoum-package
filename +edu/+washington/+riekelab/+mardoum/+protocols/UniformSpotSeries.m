@@ -119,7 +119,7 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             
             % Create presentation of specified duration
             p = stage.core.Presentation((obj.preTime + obj.stimTime + obj.tailTime) * 1e-3);
-            p.setBackgroundColor(obj.noiseMean); % Set background intensity
+            p.setBackgroundColor(obj.backgroundIntensity); % Set background intensity
             
             % Create noise stimulus.            
             rect = stage.builtin.stimuli.Rectangle();
@@ -130,16 +130,14 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             
             stimulusGroup = obj.getStimulusGroup();
             if stimulusGroup == 1
-                displayValue = stage.builtin.controllers.PropertyController(rect, 'color',...
-                    @(state)getNoiseIntensity(obj, state.time - preFrames));
-
-            else % image-derived
+                display = stage.builtin.controllers.PropertyController(rect, 'color',...
+                    @(state)getNoiseIntensity(obj, state.frame - preFrames));
+            else
                 timeVector = (0:(length(obj.currSequence)-1)) / 60;     % sec  % TODO optional compatibility with doves which is 200 Hz
-                displayValue = stage.builtin.controllers.PropertyController(rect, 'color',...
+                display = stage.builtin.controllers.PropertyController(rect, 'color',...
                     @(state)getSeqIntensity(obj, state.time - obj.preTime/1e3, obj.currSequence, timeVector));
             end
-
-            p.addController(displayValue);  % add the controller
+            p.addController(display);  % add the controller
 
             function next = getNoiseIntensity(obj, frame)
                 persistent intensity;  % store intensity for potential reuse next frame
@@ -154,14 +152,10 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             end
 
             function next = getSeqIntensity(obj, time, sequence, timeVector)
-                if time < 0  % pre frames. frame 0 starts stimPts
-                    next = obj.noiseMean;
-                else          % in stim frames
-                    if time > timeVector(end)  % out of eye trajectory, back to mean
-                        next = obj.backgroundIntensity;
-                    else                       % within eye trajectory and stim time
-                        next = interp1(timeVector, sequence, time);
-                    end
+                if time < 0  || time > timeVector(end)  % pre time or sequence finished but still in stimTime
+                    next = obj.backgroundIntensity;
+                else
+                    next = interp1(timeVector, sequence, time);
                 end
             end
 

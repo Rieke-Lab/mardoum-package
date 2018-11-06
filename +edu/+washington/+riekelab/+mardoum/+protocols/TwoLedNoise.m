@@ -198,7 +198,7 @@ classdef TwoLedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
 
         function stimulusGroup = getStimulusGroup(obj)
-            stimulusGroup = mod(obj.numEpochsPrepared - 1, 3) + 1;
+            stimulusGroup = int8(mod(obj.numEpochsPrepared - 1, 3) + 1);
         end
 
         function tf = shouldContinuePreparingEpochs(obj)

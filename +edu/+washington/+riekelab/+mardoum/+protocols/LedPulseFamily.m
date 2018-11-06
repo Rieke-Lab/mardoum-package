@@ -16,7 +16,7 @@ classdef LedPulseFamily < edu.washington.riekelab.protocols.RiekeLabProtocol
         pulsesInFamily = uint16(3)      % Number of pulses in family
         lightMean = 0                   % Pulse and LED background mean (V or norm. [0-1] depending on LED units)
         amp                             % Input amplifier
-        psth = false;
+        psth = false;                   % Toggle psth in mean response figure
     end
     
     properties (Dependent, SetAccess = private)
