@@ -9,37 +9,40 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
         noiseMean = 0.5                 % (0-1)
         noiseStdv = 0.3                 % Contrast, as fraction of mean
         frameDwell = 1                  % Frames per noise update
-        useRandomSeed = true            % false = repeated noise trajectory (seed 0)
+        useRandomFirstSeed = true            % false = repeated noise trajectory (seed 0)
 
-        % additional parameters for image-derived sequences
-        imageIndex = 1
-        runIndex   = 1
+        % Parameters for image-derived sequences
+        stimulusFile = 'luminanceSequenceDataset_20181105.mat';
+        firstStimulusNum = 1;
 
         % onlineAnalysis = 'none'
-        numberOfCycles = uint16(10)   % Number of epochs to queue
+        repeatCycle = false;
+        numberOfCycles = uint16(10)     % Number of epochs to queue
         amp                             % Output amplifier
     end
 
     properties (Hidden)
+        % onlineAnalysisType = symphonyui.core.PropertyType('char', 'row', {'none', 'extracellular', 'exc', 'inh'})
+        stimulusFileType = symphonyui.core.PropertyType('char', 'row', {'luminanceSequenceDataset_20181105.mat'})
         ampType
         backgroundIntensity
-        % onlineAnalysisType = symphonyui.core.PropertyType('char', 'row', {'none', 'extracellular', 'exc', 'inh'})
+
         noiseSeed
         noiseStream
 
-        % additional parameters for image-derived sequences
-        stimulusFile
         stimulusDataset
+        entriesPerImage
+        randOrder
         currSequence
     end
-    
+
     methods
         
         function didSetRig(obj)
             didSetRig@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj);
             [obj.amp, obj.ampType] = obj.createDeviceNamesProperty('Amp');
         end
-         
+
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj);
 
@@ -59,15 +62,16 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             % with each struct(i) having fields: ImageIndex SubjectIndex ImageName ImageMin 
             % ImageMax ImageMean centerTrajectory surroundTrajectory
             resourcesDir = 'C:\Users\Public\Documents\mardoum-package\resources\';
-            obj.stimulusFile = 'luminanceSequenceDataset_test_20181105.mat';
             S = load([resourcesDir, obj.stimulusFile]);
             obj.stimulusDataset = S.DS;
 
-            % % Get random ordering
-            % entriesPerImage = length(DS(1).doves.sequence);
-            % order = randperm(length(DS) * entriesPerImage);
+            % Get random ordering. Assumption: each image has data for same number of 'subjects'
+            obj.entriesPerImage = length(obj.stimulusDataset(1).doves.sequence);
+            obj.randOrder = randperm(length(obj.stimulusDataset) * obj.entriesPerImage);
+            switchPlace = find(obj.randOrder == firstStimulusNum);  % shift designated first stim to front of order
+            obj.randOrder([1; switchPlace]) = obj.randOrder([switchPlace; 1])
         end
-        
+
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj, epoch);
             device = obj.rig.getDevice(obj.amp);
@@ -76,40 +80,52 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             epoch.addResponse(device);
 
             stimulusGroup = obj.getStimulusGroup();
+            epoch.addParameter('stimulusGroup', stimulusGroup);
 
             if stimulusGroup == 1  % noise epoch
                 obj.backgroundIntensity = obj.noiseMean;
-                % Determine seed values. At start of epoch, set random stream
-                if obj.useRandomSeed
-                    obj.noiseSeed = RandStream.shuffleSeed;
+
+                if obj.numEpochsPrepared == 1
+                    if obj.useRandomFirstSeed
+                        obj.noiseSeed = RandStream.shuffleSeed;
+                    else
+                        obj.noiseSeed = 0;
+                    end
                 else
-                    obj.noiseSeed = 0;
+                    if ~repeatCycle
+                        obj.noiseSeed = RandStream.shuffleSeed;
+                    end
                 end
                 obj.noiseStream = RandStream('mt19937ar', 'Seed', obj.noiseSeed);
                 epoch.addParameter('noiseSeed', obj.noiseSeed);
 
-            else 
+            else
+                if obj.repeatCycle
+                    stimNum = firstStimulusNum;
+                else
+                    stimNum = obj.randOrder(obj.getCycleNumber())
+                end
+                [imgNum, runNum] = getImgAndRunNums(stimNum);
+
                 if stimulusGroup == 2  % image-derived brownian FEM
                     % Pull appropriate stimuli. Scale such that brightest point in original image is 1.0 on the monitor
-                    obj.currSequence = obj.stimulusDataset(obj.imageIndex).brownian.sequence(obj.runIndex).center / ...
-                         obj.stimulusDataset(obj.imageIndex).img.max;
+                    obj.currSequence = obj.stimulusDataset(imgNum).brownian.sequence(runNum).center / ...
+                         obj.stimulusDataset(imgNum).img.max;
                 elseif stimulusGroup == 3  % image-derived synthetic saccades
-                    obj.currSequence = obj.stimulusDataset(obj.imageIndex).synthSaccades.sequence(obj.runIndex).center / ...
-                         obj.stimulusDataset(obj.imageIndex).img.max;
+                    obj.currSequence = obj.stimulusDataset(imgNum).synthSaccades.sequence(runNum).center / ...
+                         obj.stimulusDataset(imgNum).img.max;
                 end
 
                 % Set background intensity to the mean over the original image
-                obj.backgroundIntensity = obj.stimulusDataset(obj.imageIndex).img.mean / ...
-                    obj.stimulusDataset(obj.imageIndex).img.max;
+                obj.backgroundIntensity = obj.stimulusDataset(imgNum).img.mean / ...
+                    obj.stimulusDataset(imgNum).img.max;
 
-                epoch.addParameter('stimulusFile', obj.stimulusFile);
+                epoch.addParameter('stimulusNum', stimNum)
                 epoch.addParameter('sequenceVector', obj.currSequence);
+                epoch.addParameter('backgroundIntensity', obj.backgroundIntensity);
             end
 
-            epoch.addParameter('stimulusGroup', stimulusGroup);
-            epoch.addParameter('backgroundIntensity', obj.backgroundIntensity);
         end
-
 
         function p = createPresentation(obj)
             canvasSize = obj.rig.getDevice('Stage').getCanvasSize();
@@ -130,14 +146,14 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             
             stimulusGroup = obj.getStimulusGroup();
             if stimulusGroup == 1
-                display = stage.builtin.controllers.PropertyController(rect, 'color',...
+                controller = stage.builtin.controllers.PropertyController(rect, 'color',...
                     @(state)getNoiseIntensity(obj, state.frame - preFrames));
             else
-                timeVector = (0:(length(obj.currSequence)-1)) / 60;     % sec  % TODO optional compatibility with doves which is 200 Hz
-                display = stage.builtin.controllers.PropertyController(rect, 'color',...
-                    @(state)getSeqIntensity(obj, state.time - obj.preTime/1e3, obj.currSequence, timeVector));
+                timeVector = (0:(length(obj.currSequence)-1)) / 60;  % sec  % TODO optional compatibility with doves which is 200 Hz
+                controller = stage.builtin.controllers.PropertyController(rect, 'color',...
+                    @(state)getSeqIntensity(obj, state.time - obj.preTime/1e3, timeVector));
             end
-            p.addController(display);  % add the controller
+            p.addController(controller);  % add the controller
 
             function next = getNoiseIntensity(obj, frame)
                 persistent intensity;  % store intensity for potential reuse next frame
@@ -151,11 +167,11 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
                 next = intensity;  
             end
 
-            function next = getSeqIntensity(obj, time, sequence, timeVector)
+            function next = getSeqIntensity(obj, time, timeVector)
                 if time < 0  || time > timeVector(end)  % pre time or sequence finished but still in stimTime
                     next = obj.backgroundIntensity;
                 else
-                    next = interp1(timeVector, sequence, time);
+                    next = interp1(timeVector, obj.currSequence, time);
                 end
             end
 
@@ -179,6 +195,15 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             stimulusGroup = int8(mod(obj.numEpochsPrepared - 1, 3) + 1);
         end
 
+        function cycleNum = getCycleNumber(obj)
+            cycleNum = int8(floor((obj.numEpochsPrepared - 1) / 3) + 1)
+        end
+
+        function [imgNum, runNum] = getImgAndRunNums(obj, stimNum);
+            imgNum = floor((stimNum - 1) / obj.entriesPerImage) + 1;
+            runNum = rem(stimNum - 1, obj.entriesPerImage) + 1;
+        end
+
         function tf = shouldContinuePreparingEpochs(obj)
             tf = obj.numEpochsPrepared < 3 * obj.numberOfCycles;
         end
@@ -186,6 +211,7 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
         function tf = shouldContinueRun(obj)
             tf = obj.numEpochsCompleted < 3 * obj.numberOfCycles;
         end
+
     end
     
 end
