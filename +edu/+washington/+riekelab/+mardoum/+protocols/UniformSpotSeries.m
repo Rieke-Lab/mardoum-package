@@ -68,8 +68,8 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             % Get random ordering. Assumption: each image has data for same number of 'subjects'
             obj.entriesPerImage = length(obj.stimulusDataset(1).doves.sequence);
             obj.randOrder = randperm(length(obj.stimulusDataset) * obj.entriesPerImage);
-            switchPlace = find(obj.randOrder == firstStimulusNum);  % shift designated first stim to front of order
-            obj.randOrder([1; switchPlace]) = obj.randOrder([switchPlace; 1])
+            switchPlace = find(obj.randOrder == obj.firstStimulusNum);  % shift designated first stim to front of order
+            obj.randOrder([1; switchPlace]) = obj.randOrder([switchPlace; 1]);
         end
 
         function prepareEpoch(obj, epoch)
@@ -92,7 +92,7 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
                         obj.noiseSeed = 0;
                     end
                 else
-                    if ~repeatCycle
+                    if ~obj.repeatCycle
                         obj.noiseSeed = RandStream.shuffleSeed;
                     end
                 end
@@ -101,11 +101,11 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
 
             else
                 if obj.repeatCycle
-                    stimNum = firstStimulusNum;
+                    stimNum = obj.firstStimulusNum;
                 else
-                    stimNum = obj.randOrder(obj.getCycleNumber())
+                    stimNum = obj.randOrder(obj.getCycleNumber());
                 end
-                [imgNum, runNum] = getImgAndRunNums(stimNum);
+                [imgNum, runNum] = obj.getImgAndRunNums(stimNum);
 
                 if stimulusGroup == 2  % image-derived brownian FEM
                     % Pull appropriate stimuli. Scale such that brightest point in original image is 1.0 on the monitor
@@ -196,10 +196,10 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
         end
 
         function cycleNum = getCycleNumber(obj)
-            cycleNum = int8(floor((obj.numEpochsPrepared - 1) / 3) + 1)
+            cycleNum = int8(floor((obj.numEpochsPrepared - 1) / 3) + 1);
         end
 
-        function [imgNum, runNum] = getImgAndRunNums(obj, stimNum);
+        function [imgNum, runNum] = getImgAndRunNums(obj, stimNum)
             imgNum = floor((stimNum - 1) / obj.entriesPerImage) + 1;
             runNum = rem(stimNum - 1, obj.entriesPerImage) + 1;
         end
