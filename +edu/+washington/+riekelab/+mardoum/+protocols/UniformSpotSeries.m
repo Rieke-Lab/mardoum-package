@@ -9,10 +9,10 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
         noiseMean = 0.5                 % (0-1)
         noiseStdv = 0.3                 % Contrast, as fraction of mean
         frameDwell = 1                  % Frames per noise update
-        useRandomFirstSeed = true            % false = repeated noise trajectory (seed 0)
+        useRandomFirstSeed = true       % false = repeated noise trajectory (seed 0)
 
         % Parameters for image-derived sequences
-        stimulusFile = 'luminanceSequenceDataset_20181105.mat';
+        stimulusFile = 'luminanceSequenceDataset_20181109.mat';
         firstStimulusNum = 1;
 
         % onlineAnalysis = 'none'
@@ -23,7 +23,7 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
 
     properties (Hidden)
         % onlineAnalysisType = symphonyui.core.PropertyType('char', 'row', {'none', 'extracellular', 'exc', 'inh'})
-        stimulusFileType = symphonyui.core.PropertyType('char', 'row', {'luminanceSequenceDataset_20181105.mat'})
+        stimulusFileType = symphonyui.core.PropertyType('char', 'row', {'luminanceSequenceDataset_20181109.mat'})
         ampType
         backgroundIntensity
 
