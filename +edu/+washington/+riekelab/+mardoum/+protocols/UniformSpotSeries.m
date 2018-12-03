@@ -12,7 +12,7 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
         useRandomFirstSeed = true       % false = repeated noise trajectory (seed 0)
 
         % Parameters for image-derived sequences
-        stimulusFile = 'luminanceSequenceDataset_20181109.mat';
+        stimulusFile = 'luminanceSequenceDataset_20181203.mat';
         firstStimulusNum = 1;
 
         % onlineAnalysis = 'none'
@@ -178,7 +178,7 @@ classdef UniformSpotSeries < edu.washington.riekelab.protocols.RiekeLabStageProt
             if (obj.apertureDiameter > 0)  % create aperture
                 aperture = stage.builtin.stimuli.Rectangle();
                 aperture.position = canvasSize/2;
-                aperture.color = obj.noiseMean;
+                aperture.color = obj.backgroundIntensity;
                 aperture.size = [max(canvasSize) max(canvasSize)];
                 mask = stage.core.Mask.createCircularAperture(apertureDiameterPix/max(canvasSize), 1024);  % circular aperture
                 aperture.setMask(mask);
